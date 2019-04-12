@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# simple monitoring of a given DANE Record with the matching types 3 0 1
+# compares the SHA256 fingerprint of the website with the public dane record
+# output in check_mk localCheck syntax
+# 
+# written by: <t.wurzbacher@mail.de> 19-04-12
+#
+
+export PATH=$PATH:/usr/bin/
+
+website="www.google.com"
+port="443"
+
+serviceName="DANE Record ${website}"
+
+status=2
+
+fingerprintweb=$(openssl s_client -connect ${website}:${port} </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256  2>/dev/null | cut -d "=" -f2 | sed "s/://g")
+
+if [ "${fingerprintweb}" == "" ]; then
+  checkOutput="No certificate on ${website} found!"
+else
+
+  fingerprintdane=$(dig _${port}._tcp.${website}. ANY +short | cut -d' ' -f4,5 | sed "s/ //g")
+
+  if [ ${fingerprintweb} == "" ]; then
+    status=2
+    checkOutput="No DANE record for ${website} found!"
+  else
+    compare=$(echo ${fingerprintdane} | grep -o ${fingerprintweb})
+    if [ ${compare} == "" ]; then
+      status=2
+      checkOutput="Fingerprints of certificate and DANE record differ!"
+    else
+      status=0
+      checkOutput="Fingerprint of certificate equals DANE record."
+    fi
+  fi
+fi
+echo ${status} ${serviceName} - ${checkOutput}
+
