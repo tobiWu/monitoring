@@ -1,0 +1,11 @@
+#!/bin/bash
+# wrapper for PostgreSQL Secure Monitoring (https://github.com/alvar-freude/Posemo/)
+# configuration file /etc/check_mk/posemo.conf is needed
+
+# written by <t.wurzbacher@mail.de> 2018-08-23 
+
+if [ -f /usr/bin/posemo.pl ] && [ -f /etc/check_mk/posemo.conf ]; then
+  /usr/bin/posemo.pl CheckMK --configfile /etc/check_mk/posemo.conf --pretty 2>/dev/null
+else
+  exit 0
+fi
