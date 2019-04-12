@@ -1,0 +1,24 @@
+#!/bin/bash                                                                                                                                                   
+#
+# Plugin for analyzing the postfix deffered queue
+# analyzing the queue in the aspects of the amount of receiver address,
+# receiver provider and sender
+#
+# written by <t.wurzbacher@mail.de>
+#
+
+DIRECTORY=/var/spool/postfix/deferred/
+
+if [ -d "$DIRECTORY" ]; then
+  echo "<<<deffered_mail>>>"
+
+  echo "[addresses]"
+  find $DIRECTORY -type f -print0 | xargs -0  /usr/sbin/postcat -e | grep original_recipient | egrep -o '[a-zA-Z0-9]+@.+' |sort | uniq -c | sort -nr | head -5
+
+  echo "[provider]"
+  find $DIRECTORY -type f -print0 | xargs -0  /usr/sbin/postcat -e | grep original_recipient | egrep -o '@.+' | sort | uniq -c | sort -nr | head -5
+
+  echo "[sender]"
+  find $DIRECTORY -type f -print0 | xargs -0  /usr/sbin/postcat -e | grep sender | egrep -o '[a-zA-Z0-9]+@.+' | sort | uniq -c | sort -nr | head -5
+fi
+

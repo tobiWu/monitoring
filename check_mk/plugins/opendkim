@@ -1,0 +1,17 @@
+# Gets the selector and verifies the setup of signing and verifying 
+# (private and public) dkim keys
+# The test will read a domain name, the selector and the private key, 
+# and attempt to confirm that the private key and the public DKIM key retrieved match.
+#
+# written by Tobias Wurzbacher <t.wurzbacher@mail.de> at 2018-03-13
+# 
+
+SELECTOR=$(grep "Selector" /etc/opendkim.conf | cut -f 3 2> /dev/null)
+DOMAIN="INSERT_DOMAIN"                                                                                                 
+
+if [ -n "$SELECTOR" ]; then
+    echo "<<<opendkim>>>"
+    ANSWER=$(opendkim-testkey -d $DOMAIN -s $SELECTOR -k /etc/dkimkeys/$SELECTOR.private -x /etc/opendkim.conf -v 2>&1)
+    echo $ANSWER
+fi
+
