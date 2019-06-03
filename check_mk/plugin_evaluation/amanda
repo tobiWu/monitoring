@@ -24,13 +24,18 @@
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-# monitoring plugin for amanda server and client
-# reads in agent output of amanda_client and amanda_server plugin 
-
 
 # maintainer: <t.wurzbacher@mail.de>
 
-# example agent output
+
+### DESCRIPTION ###
+# monitoring plugin for amanda server and client
+# reads in agent output of amanda_client and amanda_server plugin 
+# for each directory in amanda backup config one checkmk service is created:
+#   the state depends on the amanda report output and the age of the last backup
+
+
+### EXAMPLE agent output ###
 # <<<amanda_server>>>
 # Statistics Disk 6452
 # Statistics Dumptime Dump Time (hrs:min)         0:00       0:00       0:00
