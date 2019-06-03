@@ -11,6 +11,11 @@
 #
 # maintainer: <t.wurzbacher@mail.de
 #
+# checkmk output format:
+# <<<<amanda_client_hostname>>>>
+# <<<amanda_client:sep(124)>>>
+# backupserver|AmandaSet03|/directory|timestamp|amanda_output
+# 
 
 import os, re, sys, time
 from datetime import datetime
