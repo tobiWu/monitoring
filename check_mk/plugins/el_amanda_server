@@ -1,0 +1,64 @@
+#!/usr/bin/python
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+# Monitoring if Amanda Server statistics
+# prints out Disks, Dumptime, Tapesize and Tapes of
+# all amanda sets that are listed in crontab
+# output could be used for checkmk server plugin
+
+# maintainer: <t.wurzbacher@mail.de>
+
+import os, re, sys
+
+amreport_cmd = '/usr/sbin/amreport'
+
+# dont run on systems where amanda is not installed
+if not os.path.exists(amreport_cmd):
+    sys.exit(0)
+
+# use all amanda sets that are called via cron
+cron_command = 'sudo su - backup -s /bin/bash -c "crontab -l | grep amdump"'
+amanda_sets = []
+
+for line in os.popen(cron_command).readlines():
+    parts = line.split()
+    if not line.startswith('#') and len(parts) == 7:
+        amanda_sets.append(parts[-1])
+
+# exit if no sets called by cron
+if len(amanda_sets) == 0:
+    sys.exit(0)
+
+
+disk = "0"
+dumptime = "Dump Time not found"
+tapesize = "Tape Size not found"
+tapes = []
+
+# get data from amreport for each set
+for am_set in amanda_sets:
+    amreport_command = 'sudo su - backup -s /bin/bash -c \"/usr/sbin/amreport ' + am_set + '\"'
+    for line in os.popen(amreport_command).readlines():
+        # get dumps which aren't flushed to tape yet
+        if re.match(".*M of dumps left in the holding disk.$", line):
+            disk = line.split(" ")[2].replace("M","")
+            continue
+        # get dump time
+        if line.startswith('Dump Time (hrs:min)'):
+            dumptime = line.rstrip("\n\r")
+            continue
+        # get tape size
+        if line.startswith('Tape Size (meg)'):
+            tapesize = line.rstrip("\n\r")
+            continue
+        # get all tapes
+        if line.startswith('  DailySet_'):
+            tapes.append(line.split(" ")[2])
+            continue
+
+# print in checkmk syntax
+print "<<<amanda_server>>>"
+print "Statistics Disk %s" % disk
+print "Statistics Dumptime %s" % dumptime
+print "Statistics Tapesize %s" % tapesize
+print "Statistics Tapes %s" % " ".join(tapes)
