@@ -1,17 +1,37 @@
-# Gets the selector and verifies the setup of signing and verifying 
-# (private and public) dkim keys
-# The test will read a domain name, the selector and the private key, 
-# and attempt to confirm that the private key and the public DKIM key retrieved match.
+#!/bin/bash
 #
-# written by Tobias Wurzbacher <t.wurzbacher@mail.de> at 2018-03-13
-# 
+# Verifies the configured DKIM Keys against the public ones in DNS records.
+# The test will read in all keys from KeyTable and check them against the default config.
+# It monitores if the private key and the public DKIM key retrieved match.
+#
+# For use in checkmk you need to add the plugin evaluation to checkmk server:
+# https://github.com/tobiWu/monitoring/blob/master/check_mk/plugin_evaluation/opendkim
+#
+# written by Tobias Wurzbacher <tobias.wurzbacher@elster.de> at 2018-03-13
+# update by Tobias Wurzbacher <tobias.wurzbacher@elster.de> at 2019-07-18
+#   don't care about configfiles
+#   get all used keys from config - Test
 
-SELECTOR=$(grep "Selector" /etc/opendkim.conf | cut -f 3 2> /dev/null)
-DOMAIN="INSERT_DOMAIN"                                                                                                 
+# set path to list of domainkeys
+TABLE='/etc/opendkim/KeyTable'
 
-if [ -n "$SELECTOR" ]; then
-    echo "<<<opendkim>>>"
-    ANSWER=$(opendkim-testkey -d $DOMAIN -s $SELECTOR -k /etc/dkimkeys/$SELECTOR.private -x /etc/opendkim.conf -v 2>&1)
-    echo $ANSWER
+if [ -f $TABLE ]; then
+
+        KEYS=$(grep "domainkey" /etc/opendkim/KeyTable)
+
+        echo $KEYS | while read KEY
+        do
+            SELECTOR=$(echo $KEY | cut -d'.' -f1)
+            DOMAIN=$(echo $KEY | cut -d'/' -f5)
+
+            if [ -n "$SELECTOR" ]; then
+                echo "<<<opendkim>>>"
+                ANSWER=$(opendkim-testkey -d $DOMAIN -s $SELECTOR -vvv 2>&1)
+                echo $ANSWER
+            fi
+        done
+
+else
+        exit 0
 fi
 

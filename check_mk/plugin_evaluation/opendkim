@@ -1,58 +1,44 @@
 #!/usr/bin/python
 # -*- encoding: utf-8; py-indent-offset: 4 -*-
-# +------------------------------------------------------------------+
-# |             ____ _               _        __  __ _  __           |
-# |            / ___| |__   ___  ___| | __   |  \/  | |/ /           |
-# |           | |   | '_ \ / _ \/ __| |/ /   | |\/| | ' /            |
-# |           | |___| | | |  __/ (__|   <    | |  | | . \            |
-# |            \____|_| |_|\___|\___|_|\_\___|_|  |_|_|\_\           |
-# |                                                                  |
-# | Copyright Mathias Kettner 2014             mk@mathias-kettner.de |
-# +------------------------------------------------------------------+
-#
-# This file is part of Check_MK.
-# The official homepage is at http://mathias-kettner.de/check_mk.
-#
-# check_mk is free software;  you can redistribute it and/or modify it
-# under the  terms of the  GNU General Public License  as published by
-# the Free Software Foundation in version 2.  check_mk is  distributed
-# in the hope that it will be useful, but WITHOUT ANY WARRANTY;  with-
-# out even the implied warranty of  MERCHANTABILITY  or  FITNESS FOR A
-# PARTICULAR PURPOSE. See the  GNU General Public License for more de-
-# tails. You should have  received  a copy of the  GNU  General Public
-# License along with GNU Make; see the file  COPYING.  If  not,  write
-# to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
-# Boston, MA 02110-1301 USA.
 
+# this is an evaluation of opendkim monitoring for check_mk server
+# https://github.com/tobiWu/monitoring/blob/master/check_mk/plugins/opendkim
+#
 # written by Tobias Wurzbacher 
 # t.wurzbacher@mail.de
-# 2018/03/13
-
+# 2019/07/19
+#
 # Example output from agent:
 # <<<opendkim>>>
-# opendkim-testkey: key secure
+# opendkim-testkey: using default configfile /etc/opendkim.conf opendkim-testkey: checking key '19071901._domainkey.test.de' opendkim-testkey: key secure opendkim-testkey: key OK
+# opendkim-testkey: using default configfile /etc/opendkim.conf opendkim-testkey: checking key '19071901._domainkey.false.de' opendkim-testkey: '19071901._domainkey.false.de' record not found
+
 
 def inventory_opendkim(info):
-   if info:
-        return [ (None, None) ]
+    if info:
+   	for line in info:
+            yield (line[8], None)
 
 def check_opendkim(item, _no_params, info):
    infotext = ''
 
    for line in info:
-        # if testkey command output match 
-        if (' '.join(line) == "opendkim-testkey: key secure"):
-                infotext = "DKIM key is secure."
+   	if item == line[8]:
+	    # if testkey command output match
+	    if "opendkim-testkey: key secure opendkim-testkey: key OK" in " ".join(line):
+   	        infotext = "DKIM key %s could be validated." % (line[8])
                 state = 0
-        else:
-                infotext = "DKIM key is not secure. Check the DKIM configuration on Mailserver and Nameserver."
-                state = 1
-   return state, infotext
-
+	    elif "opendkim-testkey: key not secure opendkim-testkey: key OK" in " ".join(line):
+   	        infotext = "DKIM signature %s could not be validated securly with DNSSEC." % (line[8])
+      	        state = 1
+	    else:
+	        infotext = "DKIM key could not be validated: %s" % (" ".join(line[10:]))
+      	        state = 2
+	    yield state, infotext
 
 check_info["opendkim"] = {
     'check_function'      : check_opendkim,
     'inventory_function'  : inventory_opendkim,
-    'service_description' : 'OpenDKIM Keytest',
+    'service_description' : 'OpenDKIM Keytest %s',
 }
 
