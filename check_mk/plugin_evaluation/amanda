@@ -120,36 +120,43 @@ def check_amanda_client(item, _no_params, info):
 
             else:
                 # what's the output of amreport?
+                timestamp = int(line[3])
+                delta = now - timestamp
                 message = line[4]
                 parts = message.split()
                 if re.search("NO FILE TO FLUSH", message):
                     state = 0
-                    infotext = "%s on Backup Host %s" % (message, bck_host )
+                    infotext = "%s on %s" % (message, bck_host )
                 elif re.search("RESULTS MISSING", message):
                     state = 0
-                    infotext = "%s, Backup in Progress on Backup Host %s" % (message, bck_host )
+                    infotext = "%s, Backup in Progress %s" % (message, bck_host )
                 elif re.search("FAILED", message):
                     state = 1
-                    infotext = "Backup failed on Backup Host %s" % (bck_host )
-                elif re.search("MISSING", message):
+                    infotext = "Backup failed on %s" % (bck_host )
+                elif re.search("NOT FLUSHED", message):
                     state = 1
-                    infotext = "Backup missing on Backup Host %s" % (bck_host )
+                    infotext = "Flush failed on %s" % (bck_host )
+                elif re.search("MISSING", message):
+                    if delta > 600:
+                        state = 1
+                        infotext = "Backup missing %s" % (bck_host )
+                    else:
+                        state = 0
+                        infotext = "Backup running %s" % (bck_host )
                 elif re.search("FLUSH", message):
                     state = 0
-                    infotext = "Backup flushed: Level %s, OrigSize %sMB, Dump Duration %s(mm:ss) on Backup Host %s" % (parts[0], parts[1], parts[5], bck_host )
+                    infotext = "Backup flushed: Level %s - OrigSize %sMB - Dump Duration %s(mm:ss) on %s" % (parts[0], parts[1], parts[5], bck_host )
                 else:
                     state = 0
-                    infotext = "Level %s, OrigSize %sMB, Dump Duration %s(mm:ss) on Backup Host %s" % (parts[0], parts[1], parts[4], bck_host )
+                    infotext = "Level %s - OrigSize %sMB - Dump Duration %s(mm:ss) on %s" % (parts[0], parts[1], parts[4], bck_host )
                 yield state, infotext
 
                 # how old is the last backup?
-                timestamp = int(line[3])
-                delta = now - timestamp
                 if delta > warn:
                     state = 1
                 else:
                     state = 0
-                infotext = "Last Backup %s ago" % get_age_human_readable(delta)
+                infotext = "Last Backup %s ago on %s" % (get_age_human_readable(delta), bck_host)
                 perfdata = [ ("backup_age", delta, warn, ) ]
 
                 yield state, infotext, perfdata
