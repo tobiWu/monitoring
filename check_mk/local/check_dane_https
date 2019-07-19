@@ -12,31 +12,30 @@ export PATH=$PATH:/usr/bin/
 website="www.google.com"
 port="443"
 
-serviceName="DANE Record ${website}"
+serviceName="DANE_Record_${website}"
 
 status=2
 
 fingerprintweb=$(openssl s_client -connect ${website}:${port} </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256  2>/dev/null | cut -d "=" -f2 | sed "s/://g")
 
 if [ "${fingerprintweb}" == "" ]; then
-  checkOutput="No certificate on ${website} found!"
+  checkOutput="No HTTPS certificate on ${website} found!"
 else
 
   fingerprintdane=$(dig _${port}._tcp.${website}. ANY +short | cut -d' ' -f4,5 | sed "s/ //g")
 
-  if [ ${fingerprintweb} == "" ]; then
+  if [ "${fingerprintweb}" == "" ]; then
     status=2
     checkOutput="No DANE record for ${website} found!"
   else
     compare=$(echo ${fingerprintdane} | grep -o ${fingerprintweb})
-    if [ ${compare} == "" ]; then
+    if [ "${compare}" == "" ]; then
       status=2
-      checkOutput="Fingerprints of certificate and DANE record differ!"
+      checkOutput="DANE validation failed! The fingerprint of the HTTPS certificate is not listed in TLSA record!"
     else
       status=0
-      checkOutput="Fingerprint of certificate equals DANE record."
+      checkOutput="DANE validated. Fingerprint of HTTPS certificate equals TLSA record."
     fi
   fi
 fi
 echo ${status} ${serviceName} - ${checkOutput}
-
