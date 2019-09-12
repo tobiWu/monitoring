@@ -24,7 +24,7 @@ i#!/usr/bin/python
 # to the Free Software Foundation, Inc., 51 Franklin St,  Fifth Floor,
 # Boston, MA 02110-1301 USA.
 
-# written by tobias.wurzbacher@elster.de
+# written by t.wurzbacher@mail.de
 # 07/2018
 
 import json
