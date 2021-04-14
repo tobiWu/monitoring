@@ -1,0 +1,56 @@
+#!/usr/bin/python
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+# Maintainer: t.wurzbacher@mail.de
+
+# Example Agent Output:
+#<<<mail_reputation:sep(58)>>>
+#mail1.test.de::0:0
+#mail1.test.de_ipv6:dnsbl.sorbs.net,bl.spamcop.net:0:0
+#mx7.example.com::0:1
+#mx7.example.com_ipv6::0:1
+
+
+
+def inventory_mail_reputation(info):
+    for line in info:
+        if line[0]:
+            yield line[0], None
+
+def check_mail_reputation(item, params, info):
+    for line in info:
+        if item == line[0]:
+            # check blacklist
+            if len(line[1]) > 0:
+                state = 1
+                infotext = "%s blacklisted on %s" % (item, line[1])
+            else:
+                state = 0
+                infotext = "%s not found on blacklists" % (item)
+            yield state, infotext
+
+            # check reverse resolving
+            if int(line[2]) != 0:
+                state = 2
+                infotext = "can't resolve reverse %s" % (item)
+            else:
+                state = 0
+                infotext = "reverse resolving matches"
+            yield state, infotext
+
+            # check SPF
+            if int(line[3]) != 0:
+                state = 2
+                infotext = "%s not found in SPF" % (item)
+            else:
+                state = 0
+                infotext = "%s listed in SPF" % (item)
+            yield state, infotext
+
+
+check_info['mail_reputation'] = {
+    "inventory_function"      : inventory_mail_reputation,
+    "check_function"          : check_mail_reputation,
+    "service_description"     : "Reputation of Mailserver %s",
+}
+

@@ -1,0 +1,119 @@
+#!/usr/bin/python3
+# Description: test mailserver reputation - against blacklists, reverse resolving and spf
+# Version: 0.2.0
+
+# Maintainer: t.wurzbacher@mail.de
+
+# example for configfile
+#[mail_blacklists]
+#b.barracudacentral.org
+#bl.spamcop.net
+#cbl.abuseat.org
+#dnsbl.sorbs.net
+#zen.spamhouse.org
+#[mailserver]
+#mail1.test.de
+#mx7.example.com
+
+import os, sys
+import ipaddress, socket, configparser
+import dns.resolver
+
+# basic config, read configfile
+configfile = os.getenv("MK_CONFDIR", "/etc/check_mk") + "/mail_blacklists.cfg"
+hostlist_dict = {}
+
+# exit if there is no configfile
+if not os.path.exists(configfile):
+        sys.exit(0)
+
+### ==== functions ====
+# dnslookup_v4 (resolve ipv4 address of host) and generate rev_ip
+def dnslookup_v4(hostname):
+    try:
+        host_ip = socket.gethostbyname(hostname)
+        rev_ip = ipaddress.ip_address(host_ip).reverse_pointer
+        hostlist_dict[hostname] = [host_ip, rev_ip]
+        return
+    except Exception as e:
+        print("ERROR:", hostname,str(e), file=sys.stderr)
+        return
+    return
+
+# dnslookup_v6 (resolve ipv6 address of host) and generate rev_ip
+def dnslookup_v6(hostname):
+    try:
+        host_ip6 = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]
+        rev_ip6 = ipaddress.ip_address(host_ip6).reverse_pointer
+        hostname = hostname + "_ipv6"
+        hostlist_dict[hostname] = [host_ip6, rev_ip6]
+        return
+    except Exception as e:
+        print("ERROR:", hostname,str(e), file=sys.stderr)
+        return
+    return
+
+# check ip address against blacklist
+def blacklisted(blacklist,host_ip,rev_ip):
+    try:
+        answer = dns.resolver.query(rev_ip + "." + blacklist,'ptr')
+        return True
+    except:
+        return False
+
+# check if reverse resolving of ip matches hostname
+def checkReverse(hostname,host_ip):
+    if hostname in socket.gethostbyaddr(host_ip):
+        return 0
+    else:
+        return 1
+
+# check if mx is in spf
+def checkSpf(hostname):
+    domain = "%s.%s" % (hostname.split('.')[-2],hostname.split('.')[-1])
+    # get all mx records of domain - spf can contain all mx
+    mx_records = []
+    answers = dns.resolver.query(domain,'MX')
+    for rdata in answers:
+        mx_records.append(rdata.exchange.to_text())
+    # get SPF (TXT) record
+    txt_records = dns.resolver.query(domain,'TXT')
+    for rdata in txt_records:
+        for txt_string in rdata.strings:
+            if hostname in str(txt_string):
+                return 0
+            elif "mx" in str(txt_string) and (hostname + ".")  in mx_records:
+                return 0
+            else:
+                return 1
+
+### ==== main ====
+# declare parser for configfile
+config = configparser.ConfigParser(allow_no_value=True)
+
+# read in configfile
+try:
+    if not config.read(configfile):
+        print("**ERROR** Failed to parse configuration file %s!") % configfile
+    else:
+        config.read(configfile)
+except Exception as e:
+    print("**ERROR** Failed to parse config file %s: %s ") % (configfile, repr(e))
+
+# generate dictionary, format: hostlist_dict[Server][IP][revIP]
+for mx in config.options("mailserver"):
+    dnslookup_v4(mx)
+    dnslookup_v6(mx)
+
+print("<<<mail_reputation:sep(58)>>>")
+for mailserver in hostlist_dict:
+    host_ip, rev_ip = hostlist_dict.get(mailserver) 
+    listed_on = []
+    for dnsbl in config.options("blacklists"):
+        if blacklisted(dnsbl,host_ip,rev_ip):
+            listed_on.append(dnsbl)
+    mx = mailserver.split('_')[0]
+    rev = checkReverse(mx,host_ip) 
+    spf = checkSpf(mx) 
+    output = "%s:%s:%s:%s" % (mailserver,",".join(listed_on),rev,spf)
+    print(output)

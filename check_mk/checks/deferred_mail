@@ -1,0 +1,146 @@
+#!/usr/bin/python
+# -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+# Monitoring of postfix deferred queues
+# analyzing the queue in the aspects of the amount of receiver address,
+# receiver provider and sender
+
+# Maintainer: t.wurzabcher@mail.de
+
+# Example Agent Output:
+#<<<deferred_mail>>>
+#[addresses]
+#     34 xy@vr-web.de
+#     24 abc@gmail.de
+#      7 test@t-online.de
+#      5 maik@icloud.de
+#      4 elsteruser@hidebox.org
+#[provider]
+#     34 @vr-web.de
+#     24 @gmail.de
+#      7 @t-online.de
+#      5 @icloud.de
+#      4 @hidebox.org
+#[sender]
+#    266 service@test.de
+#     30 noreply@test.de
+#     20 support@test.de
+#
+
+factory_settings["deferred_mail_default_levels"] = {
+    "mail_address"  : (30,50),
+    "mail_provider" : (300,700),
+    "mail_sender"   : (500,1000)
+}
+
+def parse_deferred_mail(info):
+    parsed = {}
+    for line in info:
+        # nested dictionary for each section (status, resource, time)
+        if line[0].startswith("[") and line[0].endswith("]"):
+            typ = str(line[0])
+            parsed[typ] = {}
+        # fill section dictionarys with data
+        else:
+            key = str(line[0])
+            value = str(line[1])
+            parsed[typ][key] = value
+    return parsed
+
+check_info['deferred_mail'] = {
+    "parse_function"          : parse_deferred_mail,
+    "default_levels_variable" : "deferred_mail_default_levels",
+}
+
+def inventory_deferred_mail_address(parsed):
+    for line in parsed:
+        if "address" in line:
+            return [ (None, deferred_mail_default_levels) ]
+
+def check_deferred_mail_address(_no_item, params, parsed):
+
+    # iterate over sections
+    for sectionname, section in parsed.iteritems():
+        infotext = ""
+        status = 0
+        warn, crit = params['mail_address']
+        # section address
+        if "address" in sectionname:
+            for count, addr in sorted(section.items(), key=lambda item: int(item[0]), reverse=True):
+                infotext += "%s %s, " % (count, addr)
+                if int(count) > crit:
+                        status = 2
+                elif int(count) > warn:
+                        status = 1
+            yield status, infotext,  
+
+check_info['deferred_mail.address'] = {
+    "inventory_function"      : inventory_deferred_mail_address,
+    "check_function"          : check_deferred_mail_address,
+    "service_description"     : "Postfix deferred by address",
+    "group"                   : "deferred_mail",
+    "default_levels_variable" : "deferred_mail_default_levels",
+}
+
+
+def inventory_deferred_mail_provider(parsed):
+    for line in parsed:
+        if "provider" in line:
+            return [ (None, deferred_mail_default_levels) ]
+
+def check_deferred_mail_provider(_no_item, params, parsed):
+
+    # iterate over sections
+    for sectionname, section in parsed.iteritems():
+        infotext = ""
+        status = 0
+        warn, crit = params['mail_provider']
+        # section provider
+        if "provider" in sectionname:
+            for count, addr in sorted(section.items(), key=lambda item: int(item[0]), reverse=True):
+                infotext += "%s %s, " % (count, addr)
+                if int(count) > crit:
+                        status = 2
+                elif int(count) > warn:
+                        status = 1
+            yield status, infotext,  
+
+check_info['deferred_mail.provider'] = {
+    "inventory_function"      : inventory_deferred_mail_provider,
+    "check_function"          : check_deferred_mail_provider,
+    "service_description"     : "Postfix deferred by provider",
+    "group"                   : "deferred_mail",
+    "default_levels_variable" : "deferred_mail_default_levels",
+}
+
+
+def inventory_deferred_mail_sender(parsed):
+    for line in parsed:
+        if "sender" in line:
+            return [ (None, deferred_mail_default_levels) ]
+
+def check_deferred_mail_sender(_no_item, params, parsed):
+
+    # iterate over sections
+    for sectionname, section in parsed.iteritems():
+        infotext = ""
+        status = 0
+        warn, crit = params['mail_sender']
+        # section sender
+        if "sender" in sectionname:
+            for count, addr in sorted(section.items(), key=lambda item: int(item[0]), reverse=True):
+                infotext += "%s %s, " % (count, addr)
+                if int(count) > crit:
+                        status = 2
+                elif int(count) > warn:
+                        status = 1
+            yield status, infotext,  
+
+check_info['deferred_mail.sender'] = {
+    "inventory_function"      : inventory_deferred_mail_sender,
+    "check_function"          : check_deferred_mail_sender,
+    "service_description"     : "Postfix deferred by sender",
+    "group"                   : "deferred_mail",
+    "default_levels_variable" : "deferred_mail_default_levels",
+}
+
