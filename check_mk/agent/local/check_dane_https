@@ -42,7 +42,8 @@ while IFS= read -r file; do
       compare=$(echo ${fingerprintdane} | grep -o ${fingerprintweb})
       if [ "${compare}" == "" ]; then
         status=2
-        checkOutput="DANE validation failed! The fingerprint of the HTTPS certificate is not listed in TLSA record!"      else
+        checkOutput="DANE validation failed! The fingerprint of the HTTPS certificate is not listed in TLSA record!"
+      else
         status=0
         checkOutput="DANE validated. Fingerprint of HTTPS certificate equals TLSA record."
       fi    
