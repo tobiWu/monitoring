@@ -80,12 +80,14 @@ def checkSpf(hostname):
     txt_records = dns.resolver.query(domain,'TXT')
     for rdata in txt_records:
         for txt_string in rdata.strings:
-            if hostname in str(txt_string):
-                return 0
-            elif "mx" in str(txt_string) and (hostname + ".")  in mx_records:
-                return 0
-            else:
-                return 1
+            # analyze only txt records from type spf
+            if "v=spf1" in str(txt_string):
+                if hostname in str(txt_string):
+                    return 0
+                elif "mx" in str(txt_string) and (hostname + ".")  in mx_records:
+                    return 0
+                else:
+                    return 1
 
 ### ==== main ====
 # declare parser for configfile
